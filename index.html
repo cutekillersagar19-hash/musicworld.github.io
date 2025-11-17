@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MusicWorld — Free Static Music Site</title>
+  <meta name="description" content="MusicWorld — play local audio, create playlists, embed YouTube & SoundCloud, import/export playlists. Host on GitHub Pages.">
+  <style>
+    :root{--bg:#071027;--card:#081425;--muted:#98a4b2;--accent:#6c5ce7;--glass:rgba(255,255,255,0.03);--radius:14px;--maxw:1100px;font-family:Inter,system-ui,Arial,Helvetica,sans-serif}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:linear-gradient(180deg,var(--bg),#031124);color:#e8f0fb;padding:28px;display:flex;justify-content:center}
+    .wrap{width:100%;max-width:var(--maxw)}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0} .sub{color:var(--muted);font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr 380px;gap:18px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,var(--card),rgba(8,20,37,0.9));padding:16px;border-radius:var(--radius);box-shadow:0 8px 36px rgba(2,6,23,0.6)}
+    .row{display:flex;gap:10px;align-items:center}
+    .search{flex:1;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.02);color:inherit}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:10px;color:inherit;cursor:pointer}
+    .primary{background:linear-gradient(90deg,var(--accent),#06b6d4);border:none;color:#021124}
+    .uploader{border:2px dashed rgba(255,255,255,0.04);padding:14px;border-radius:12px;text-align:center;color:var(--muted);font-size:13px}
+    .library-list{display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow:auto;padding-right:6px;margin-top:10px}
+    .track{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;background:var(--glass);cursor:pointer}
+    .art{width:56px;height:56px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700}
+    .meta{flex:1}
+    .title{font-size:15px;margin:0}
+    .artist{font-size:12px;color:var(--muted);margin-top:4px}
+    .player{display:flex;flex-direction:column;gap:12px}
+    .now{display:flex;gap:12px;align-items:center}
+    .big-art{width:96px;height:96px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px}
+    .progress{height:6px;background:rgba(255,255,255,0.06);border-radius:6px;position:relative;overflow:hidden}
+    .progress>i{position:absolute;left:0;top:0;height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#06b6d4)}
+    .time-row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+    .playlist{display:flex;flex-direction:column;gap:8px;max-height:28vh;overflow:auto}
+    .embed-area{display:flex;gap:8px;align-items:center;margin-top:8px}
+    textarea.import-box{width:100%;height:96px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);border:none;color:inherit}
+    footer{margin-top:12px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between}
+    a.link{color:var(--accent);text-decoration:none}
+    input[type=file]{display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>MusicWorld</h1>
+        <div class="sub">Free static music website — play local files, embed streaming, import/export playlists</div>
+      </div>
+      <div class="row">
+        <button id="exportBtn" class="btn">Export Playlist</button>
+        <button id="clearBtn" class="btn">Clear Storage</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="row">
+          <input id="search" class="search" placeholder="Search tracks (title, artist)" />
+          <label class="btn" for="fileInput">Add Files</label>
+          <input id="fileInput" type="file" multiple accept="audio/*" />
+        </div>
+
+        <div class="uploader" id="dropZone">Drop audio files here to add to MusicWorld</div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+          <input id="embedUrl" class="search" placeholder="YouTube or SoundCloud URL (paste & Add)" />
+          <button id="addEmbedBtn" class="btn">Add Embed</button>
+        </div>
+
+        <h3 style="margin-top:14px;margin-bottom:8px">Library</h3>
+        <div id="library" class="library-list" aria-live="polite"></div>
+
+        <h3 style="margin-top:12px;margin-bottom:8px">Import playlist (JSON)</h3>
+        <textarea id="importBox" class="import-box" placeholder='Paste playlist JSON array here and press Import'></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="importBtn" class="btn">Import Playlist</button>
+          <button id="formatBtn" class="btn">Format Sample</button>
+        </div>
+      </section>
+
+      <aside class="player card">
+        <div class="now">
+          <div id="bigArt" class="big-art">♪</div>
+          <div class="song-info">
+            <div id="nowTitle" style="font-weight:600">Not playing</div>
+            <div id="nowArtist" class="sub">—</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="progress" id="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+          <div class="time-row"><span id="curTime">0:00</span><span id="durTime">0:00</span></div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center">
+          <button id="prevBtn" class="btn">⟨</button>
+          <button id="playBtn" class="btn primary">Play</button>
+          <button id="nextBtn" class="btn">⟩</button>
+          <div style="flex:1"></div>
+          <label title="Volume" class="row"><input id="vol" type="range" min="0" max="1" step="0.01" value="0.9" /></label>
+        </div>
+
+        <h3 style="margin:10px 0 6px">Playlist</h3>
+        <div id="playlist" class="playlist"></div>
+
+        <div id="embedPlayer" style="margin-top:8px;min-height:80px"></div>
+
+        <footer>
+          <div class="sub">Host on GitHub Pages • Free</div>
+          <div><a id="githubLink" class="link" href="https://docs.github.com/en/pages">GitHub Pages</a></div>
+        </footer>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+  // MusicWorld — Single-file static music site
+  // State
+  const state = { library: [], playlist: [], currentIndex: -1, audio: new Audio(), isPlaying: false };
+
+  // Elements
+  const libraryEl = document.getElementById('library');
+  const playlistEl = document.getElementById('playlist');
+  const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const bigArt = document.getElementById('bigArt');
+  const nowTitle = document.getElementById('nowTitle');
+  const nowArtist = document.getElementById('nowArtist');
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = progressBar.querySelector('i');
+  const curTimeEl = document.getElementById('curTime');
+  const durTimeEl = document.getElementById('durTime');
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const searchInput = document.getElementById('search');
+  const vol = document.getElementById('vol');
+  const addEmbedBtn = document.getElementById('addEmbedBtn');
+  const embedUrl = document.getElementById('embedUrl');
+  const importBtn = document.getElementById('importBtn');
+  const importBox = document.getElementById('importBox');
+  const formatBtn = document.getElementById('formatBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const embedPlayer = document.getElementById('embedPlayer');
+
+  // Helpers
+  function formatTime(s){ if(!isFinite(s)) return '0:00'; s=Math.floor(s); const m=Math.floor(s/60); const sec=s%60; return `${m}:${sec.toString().padStart(2,'0')}`; }
+  function persist(){ try{ localStorage.setItem('mw_library', JSON.stringify(state.library)); localStorage.setItem('mw_playlist', JSON.stringify(state.playlist)); }catch(e){console.warn('persist',e)} }
+  function loadPersist(){ try{ const lib=JSON.parse(localStorage.getItem('mw_library')||'null'); const pls=JSON.parse(localStorage.getItem('mw_playlist')||'null'); if(lib&&Array.isArray(lib)) state.library=lib; if(pls&&Array.isArray(pls)) state.playlist=pls;}catch(e){console.warn('load',e)} }
+
+  // Renderers
+  function renderLibrary(filter=''){
+    libraryEl.innerHTML='';
+    const items = state.library.filter(t=> (t.title+' '+(t.artist||'')).toLowerCase().includes(filter.toLowerCase()));
+    if(items.length===0){ libraryEl.innerHTML = '<div class="sub">No tracks. Add files or embed links.</div>'; return; }
+    items.forEach(t=>{
+      const div=document.createElement('div'); div.className='track'; div.tabIndex=0;
+      if(state.playlist.findIndex(p=>p.id===t.id)!==-1) div.style.borderLeft='3px solid rgba(108,92,231,0.18)';
+      const art=document.createElement('div'); art.className='art'; art.textContent=(t.title||'♪').slice(0,2).toUpperCase();
+      const meta=document.createElement('div'); meta.className='meta'; const title=document.createElement('div'); title.className='title'; title.textContent=t.title||'Untitled'; const artist=document.createElement('div'); artist.className='artist'; artist.textContent=t.artist||''; meta.appendChild(title); meta.appendChild(artist);
+      const addBtn=document.createElement('button'); addBtn.className='btn'; addBtn.textContent='+'; addBtn.title='Add to playlist'; addBtn.onclick=(e)=>{ e.stopPropagation(); addToPlaylist(t); };
+      div.appendChild(art); div.appendChild(meta); div.appendChild(addBtn); div.onclick=()=>{ playTrackFromLibrary(t); };
+      libraryEl.appendChild(div);
+    });
+  }
+  function renderPlaylist(){ playlistEl.innerHTML=''; if(state.playlist.length===0){ playlistEl.innerHTML='<div class="sub">Playlist empty — add tracks from library.</div>'; return }
+    state.playlist.forEach((t,i)=>{
+      const el=document.createElement('div'); el.className='track'; el.style.padding='8px'; if(i===state.currentIndex) el.classList.add('playing');
+      const meta=document.createElement('div'); meta.className='meta'; const title=document.createElement('div'); title.className='title'; title.textContent=t.title; const artist=document.createElement('div'); artist.className='artist'; artist.textContent=t.artist||''; meta.appendChild(title); meta.appendChild(artist);
+      const dl=document.createElement('a'); dl.className='btn'; dl.textContent='⇩'; dl.href = t.src || '#'; dl.download = t.title + '.mp3'; dl.target='_blank';
+      const rem=document.createElement('button'); rem.className='btn'; rem.textContent='✕'; rem.onclick=(e)=>{ e.stopPropagation(); removeFromPlaylist(i); };
+      el.appendChild(meta); el.appendChild(dl); el.appendChild(rem); el.onclick=()=>{ playIndex(i) };
+      playlistEl.appendChild(el);
+    });
+  }
+
+  // Manipulation
+  function addToLibrary(track){ if(!track.id) track.id=crypto.randomUUID(); state.library.push(track); persist(); renderLibrary(searchInput.value); }
+  function addToPlaylist(track){ state.playlist.push(track); persist(); renderPlaylist(); }
+  function removeFromPlaylist(idx){ state.playlist.splice(idx,1); if(idx===state.currentIndex){ state.currentIndex=-1; stopAudio(); } persist(); renderPlaylist(); }
+
+  // Playback core
+  function loadIndex(i){ if(i<0||i>=state.playlist.length) return; state.currentIndex=i; const t=state.playlist[i]; if(t.embed){ // embedded streaming
+      // For embeds, we don't use the audio element; show iframe
+      showEmbed(t.src);
+      nowTitle.textContent = t.title || 'Embedded Track'; nowArtist.textContent = t.artist || '';
+      bigArt.textContent = (t.title||'♪').slice(0,2).toUpperCase(); progressFill.style.width='0%'; curTimeEl.textContent='—'; durTimeEl.textContent='—';
+    } else {
+      hideEmbed(); state.audio.src = t.src; state.audio.crossOrigin = 'anonymous'; nowTitle.textContent = t.title || 'Untitled'; nowArtist.textContent = t.artist || ''; bigArt.textContent=(t.title||'♪').slice(0,2).toUpperCase();
+    } renderPlaylist(); renderLibrary(searchInput.value);
+  }
+  function playIndex(i){ loadIndex(i); if(state.playlist[i] && !state.playlist[i].embed) playAudio(); else pauseAudio(); }
+  function playTrackFromLibrary(track){ addToPlaylist(track); playIndex(state.playlist.length-1); }
+
+  function playAudio(){ if(!state.audio.src) return; state.audio.play(); state.isPlaying=true; playBtn.textContent='Pause'; }
+  function pauseAudio(){ state.audio.pause(); state.isPlaying=false; playBtn.textContent='Play'; }
+  function stopAudio(){ pauseAudio(); state.audio.src=''; nowTitle.textContent='Not playing'; nowArtist.textContent='—'; progressFill.style.width='0%'; curTimeEl.textContent='0:00'; durTimeEl.textContent='0:00'; hideEmbed(); }
+
+  // Embed UI
+  function isYouTube(url){ return url.includes('youtube.com')||url.includes('youtu.be'); }
+  function isSoundCloud(url){ return url.includes('soundcloud.com'); }
+  function normalizeYouTube(url){ try{ const u=new URL(url.includes('http')?url:'https://'+url); if(u.hostname==='youtu.be'){ return u.pathname.slice(1); } const p=u.searchParams.get('v'); return p; }catch(e){return null} }
+  function showEmbed(url){ embedPlayer.innerHTML=''; if(isYouTube(url)){ const v=normalizeYouTube(url); if(!v) return; const iframe=document.createElement('iframe'); iframe.width='100%'; iframe.height='160'; iframe.src='https://www.youtube.com/embed/' + v + '?rel=0&autoplay=1'; iframe.allow='autoplay; encrypted-media'; iframe.frameBorder=0; embedPlayer.appendChild(iframe); } else if(isSoundCloud(url)){ const iframe=document.createElement('iframe'); iframe.width='100%'; iframe.height='160'; iframe.src='https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) + '&auto_play=true'; iframe.allow='autoplay'; iframe.frameBorder=0; embedPlayer.appendChild(iframe); } }
+  function hideEmbed(){ embedPlayer.innerHTML=''; }
+
+  // Events
+  playBtn.onclick = ()=>{ if(state.isPlaying) pauseAudio(); else playAudio(); }
+  prevBtn.onclick = ()=>{ if(state.currentIndex>0) playIndex(state.currentIndex-1); }
+  nextBtn.onclick = ()=>{ if(state.currentIndex < state.playlist.length-1) playIndex(state.currentIndex+1); }
+
+  state.audio.ontimeupdate = ()=>{ const cur=state.audio.currentTime; const dur=state.audio.duration||0; const pct = dur? (cur/dur)*100 : 0; progressFill.style.width = pct + '%'; curTimeEl.textContent = formatTime(cur); durTimeEl.textContent = formatTime(dur); }
+  state.audio.onended = ()=>{ if(state.currentIndex < state.playlist.length-1) playIndex(state.currentIndex+1); else pauseAudio(); }
+
+  progressBar.addEventListener('click',(e)=>{ const rect=progressBar.getBoundingClientRect(); const x=e.clientX-rect.left; const pct=x/rect.width; if(state.audio.duration) state.audio.currentTime = pct * state.audio.duration; });
+
+  vol.addEventListener('input',()=>{ state.audio.volume = vol.value; }); state.audio.volume = vol.value;
+
+  // File handling
+  fileInput.addEventListener('change', async (e)=>{ handleFiles([...e.target.files]); fileInput.value=''; });
+  dropZone.addEventListener('dragover',(e)=>{ e.preventDefault(); dropZone.style.borderColor='rgba(108,92,231,0.5)'}); 
+  dropZone.addEventListener('dragleave',(e)=>{ dropZone.style.borderColor='rgba(255,255,255,0.04)'}); 
+  dropZone.addEventListener('drop',(e)=>{ e.preventDefault(); dropZone.style.borderColor='rgba(255,255,255,0.04)'; handleFiles([...e.dataTransfer.files]); });
+  async function handleFiles(files){ for(const f of files){ if(!f.type.startsWith('audio')) continue; const src = URL.createObjectURL(f); const meta = { id: crypto.randomUUID(), title: f.name.replace(/\.[^/.]+$/,''), artist: 'Local file', src }; addToLibrary(meta); } }
+
+  // Search
+  searchInput.addEventListener('input', ()=>{ renderLibrary(searchInput.value); });
+
+  // Embed add
+  addEmbedBtn.addEventListener('click', ()=>{ const url = embedUrl.value.trim(); if(!url) return alert('Paste a YouTube or SoundCloud URL'); if(isYouTube(url) || isSoundCloud(url)){ const t = { id: crypto.randomUUID(), title:'Embedded Track', artist: isYouTube(url)?'YouTube':'SoundCloud', src: url, embed: true }; addToLibrary(t); embedUrl.value=''; } else alert('Only YouTube or SoundCloud URLs supported'); });
+
+  // Import/Export
+  importBtn.addEventListener('click', ()=>{ const txt = importBox.value.trim(); if(!txt) return alert('Paste playlist JSON'); try{ const arr = JSON.parse(txt); if(!Array.isArray(arr)) throw new Error('Not array'); state.playlist = arr.map(item=>({ id: item.id||crypto.randomUUID(), title: item.title||'Untitled', artist: item.artist||'', src: item.src||'', embed: !!item.embed })); persist(); renderPlaylist(); alert('Imported playlist'); }catch(e){ alert('Invalid JSON: ' + e.message); } });
+  formatBtn.addEventListener('click', ()=>{ const sample=[{id:crypto.randomUUID(),title:'Sample Track',artist:'Artist',src:'https://example.com/audio.mp3'},{id:crypto.randomUUID(),title:'Youtube Example',artist:'YouTube',src:'https://youtu.be/dQw4w9WgXcQ',embed:true}]; importBox.value = JSON.stringify(sample,null,2); });
+  exportBtn.addEventListener('click', ()=>{ const data = JSON.stringify(state.playlist,null,2); const blob = new Blob([data],{type:'application/json'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='musicworld-playlist.json'; a.click(); URL.revokeObjectURL(url); });
+
+  // Clear storage
+  clearBtn.addEventListener('click', ()=>{ if(confirm('Clear MusicWorld saved library and playlist?')){ localStorage.removeItem('mw_library'); localStorage.removeItem('mw_playlist'); state.library=[]; state.playlist=[]; state.currentIndex=-1; persist(); renderLibrary(); renderPlaylist(); stopAudio(); } });
+
+  // Keyboard
+  document.addEventListener('keydown',(e)=>{ if(e.code==='Space' && e.target.tagName!=='INPUT' && e.target.tagName!=='TEXTAREA'){ e.preventDefault(); if(state.isPlaying) pauseAudio(); else playAudio(); } if(e.key==='ArrowRight') nextBtn.click(); if(e.key==='ArrowLeft') prevBtn.click(); });
+
+  // Utilities for external use
+  window.addEmbed = function(url){ addEmbedUrlExtern(url); }
+  function addEmbedUrlExtern(url){ if(isYouTube(url)||isSoundCloud(url)){ const t={id:crypto.randomUUID(),title:'Embedded Track',artist:isYouTube(url)?'YouTube':'SoundCloud',src:url,embed:true}; addToLibrary(t); } }
+  window.importPlaylist = function(json){ try{ const arr = JSON.parse(json); if(Array.isArray(arr)){ state.playlist = arr.map(item=>({ id: item.id||crypto.randomUUID(), title: item.title||'Untitled', artist: item.artist||'', src: item.src||'', embed: !!item.embed })); persist(); renderPlaylist(); } }catch(e){ console.warn('import failed',e) } }
+
+  // Init
+  function init(){ loadPersist(); if(state.library.length===0){ /* keep empty so user adds files */ } renderLibrary(''); renderPlaylist(); }
+  init();
+
+  // Accessibility title update
+  state.audio.addEventListener('play', ()=>{ const t=state.playlist[state.currentIndex]; if(t) document.title = t.title + ' — MusicWorld'; });
+  </script>
+</body>
+</html>
